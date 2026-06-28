@@ -1,0 +1,23 @@
+{
+  "skill_name": "miniflux-cli",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Catch me up on what's unread in my reader — give me a quick summary of the highlights.",
+      "expected_output": "Triggers the skill; runs `entries --status unread` to scan titles, then selectively `entry <id>` for noteworthy items to summarize. Does NOT pull full content for every unread entry.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Is there anything new in my Tech category today?",
+      "expected_output": "Triggers the skill; runs `categories` to resolve the 'Tech' name to a numeric id, then `entries --category <id>` (likely with --status unread). Recognizes that --category needs an id, not a name.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Search my feeds for anything about Kubernetes and show me what you find.",
+      "expected_output": "Triggers the skill; runs `entries --search \"Kubernetes\"`, presents matching titles/feeds, and offers to drill into a specific article with `entry <id>`.",
+      "files": []
+    }
+  ]
+}

@@ -1,7 +1,12 @@
 # miniflux-agent-cli
 
-Zero-install, single-file Python CLI for reading a Miniflux instance.
-JSON-only output, designed for AI agents. Standard library only.
+A Claude Code **skill** that lets an agent read a Miniflux instance. The skill lives
+in [`miniflux-cli/`](miniflux-cli/) and bundles a zero-install, single-file Python CLI
+(`miniflux-cli/scripts/miniflux.py`). JSON-only output, designed for AI agents.
+Standard library only.
+
+Install by placing the `miniflux-cli/` folder where your agent loads skills (e.g.
+`.claude/skills/`), or run the bundled CLI directly as shown below.
 
 ## Setup
 
@@ -12,12 +17,12 @@ Both can also be passed as `--base-url` / `--token` (args win over env).
 
 ## Commands
 
-    python miniflux.py entries [--limit N] [--offset N] [--status unread|read|removed]...
+    python miniflux-cli/scripts/miniflux.py entries [--limit N] [--offset N] [--status unread|read|removed]...
                               [--order FIELD] [--direction asc|desc]
                               [--category ID] [--feed ID] [--search TEXT] [--starred]
-    python miniflux.py entry <id>
-    python miniflux.py feeds
-    python miniflux.py categories [--counts]
+    python miniflux-cli/scripts/miniflux.py entry <id>
+    python miniflux-cli/scripts/miniflux.py feeds
+    python miniflux-cli/scripts/miniflux.py categories [--counts]
 
 `entries` omits each entry's `content`; use `entry <id>` for the full article.
 

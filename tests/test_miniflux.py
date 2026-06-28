@@ -6,7 +6,8 @@ import unittest
 import urllib.error
 from unittest import mock
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(_REPO_ROOT, "miniflux-cli", "scripts"))
 import miniflux  # noqa: E402
 
 
