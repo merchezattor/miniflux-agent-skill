@@ -57,7 +57,13 @@ in sync.
    Fetch unread, mark read, return them. No single Miniflux endpoint does this;
    it composes two calls. Behavior:
    - `GET entries` with `status=unread` plus any of `--feed` (switches path to
-     `feeds/{id}/entries`), `--category` (`category_id` param), `--limit`.
+     `feeds/{id}/entries`), `--category` (`category_id` param), `--limit`. These
+     reuse `entries`' exact filtering semantics. All are optional and may be
+     combined, but because `--feed` switches the request path to a single feed's
+     entries (which the `category_id` param does not further constrain),
+     **`--feed` takes precedence when both `--feed` and `--category` are given.**
+     A feed belongs to exactly one category, so the two filters together are
+     either redundant or empty; this precedence makes that case well-defined.
    - Collect the returned entry ids.
    - If there are ids: `PUT entries {"entry_ids": ids, "status": "read"}`.
    - Return the entries with `content` stripped (same scan model as `entries`),
