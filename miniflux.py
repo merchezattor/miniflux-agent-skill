@@ -52,3 +52,31 @@ def api_request(base_url, token, method, path, params=None):
         return json.loads(body)
     except ValueError:
         raise MinifluxError("Invalid JSON response from server", exit_code=1)
+
+
+def strip_content(entry):
+    return {k: v for k, v in entry.items() if k != "content"}
+
+
+def cmd_entries(args, call):
+    params = {"limit": args.limit, "offset": args.offset}
+    if args.status:
+        params["status"] = args.status
+    if args.order:
+        params["order"] = args.order
+    if args.direction:
+        params["direction"] = args.direction
+    if args.category is not None:
+        params["category_id"] = args.category
+    if args.search:
+        params["search"] = args.search
+    if args.starred:
+        params["starred"] = "true"
+    if args.feed is not None:
+        path = "feeds/{}/entries".format(args.feed)
+    else:
+        path = "entries"
+    result = call("GET", path, params)
+    if isinstance(result, dict) and "entries" in result:
+        result["entries"] = [strip_content(e) for e in result["entries"]]
+    return result

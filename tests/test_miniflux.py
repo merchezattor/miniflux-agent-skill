@@ -95,5 +95,69 @@ class TestApiRequest(unittest.TestCase):
         self.assertEqual(ctx.exception.exit_code, 1)
 
 
+class TestStripContent(unittest.TestCase):
+    def test_removes_content_key_only(self):
+        entry = {"id": 1, "title": "t", "content": "<p>big</p>"}
+        out = miniflux.strip_content(entry)
+        self.assertEqual(out, {"id": 1, "title": "t"})
+
+    def test_does_not_mutate_input(self):
+        entry = {"id": 1, "content": "x"}
+        miniflux.strip_content(entry)
+        self.assertIn("content", entry)
+
+
+class _Args:
+    def __init__(self, **kw):
+        defaults = dict(
+            limit=20, offset=0, status=None, order="published_at",
+            direction="desc", category=None, feed=None, search=None, starred=False,
+        )
+        defaults.update(kw)
+        self.__dict__.update(defaults)
+
+
+class TestCmdEntries(unittest.TestCase):
+    def test_default_path_and_strips_content(self):
+        captured = {}
+
+        def call(method, path, params=None):
+            captured["method"] = method
+            captured["path"] = path
+            captured["params"] = params
+            return {"total": 1, "entries": [{"id": 9, "content": "big"}]}
+
+        result = miniflux.cmd_entries(_Args(), call)
+        self.assertEqual(captured["path"], "entries")
+        self.assertEqual(captured["params"]["limit"], 20)
+        self.assertEqual(captured["params"]["order"], "published_at")
+        self.assertEqual(captured["params"]["direction"], "desc")
+        self.assertNotIn("content", result["entries"][0])
+
+    def test_feed_filter_changes_path(self):
+        def call(method, path, params=None):
+            return {"total": 0, "entries": []}
+
+        captured = {}
+
+        def capture(method, path, params=None):
+            captured["path"] = path
+            return {"total": 0, "entries": []}
+
+        miniflux.cmd_entries(_Args(feed=7), capture)
+        self.assertEqual(captured["path"], "feeds/7/entries")
+
+    def test_status_list_and_starred_passed_through(self):
+        captured = {}
+
+        def call(method, path, params=None):
+            captured["params"] = params
+            return {"total": 0, "entries": []}
+
+        miniflux.cmd_entries(_Args(status=["unread", "read"], starred=True), call)
+        self.assertEqual(captured["params"]["status"], ["unread", "read"])
+        self.assertEqual(captured["params"]["starred"], "true")
+
+
 if __name__ == "__main__":
     unittest.main()
