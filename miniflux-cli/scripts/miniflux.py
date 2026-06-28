@@ -4,10 +4,13 @@
 import argparse
 import json
 import os
+import socket
 import sys
 import urllib.error
 import urllib.parse
 import urllib.request
+
+REQUEST_TIMEOUT = 30
 
 
 class MinifluxError(Exception):
@@ -42,7 +45,7 @@ def api_request(base_url, token, method, path, params=None, data=None):
     if body_bytes is not None:
         req.add_header("Content-Type", "application/json")
     try:
-        with urllib.request.urlopen(req) as resp:
+        with urllib.request.urlopen(req, timeout=REQUEST_TIMEOUT) as resp:
             body = resp.read()
     except urllib.error.HTTPError as exc:
         message = exc.read().decode("utf-8", "replace")
@@ -51,7 +54,15 @@ def api_request(base_url, token, method, path, params=None, data=None):
         except (ValueError, AttributeError):
             pass
         raise MinifluxError("API error {}: {}".format(exc.code, message), exit_code=1)
+    except socket.timeout:
+        raise MinifluxError(
+            "Network timeout after {}s".format(REQUEST_TIMEOUT), exit_code=1
+        )
     except urllib.error.URLError as exc:
+        if isinstance(exc.reason, socket.timeout):
+            raise MinifluxError(
+                "Network timeout after {}s".format(REQUEST_TIMEOUT), exit_code=1
+            )
         raise MinifluxError("Network error: {}".format(exc.reason), exit_code=1)
     if not body:
         return None

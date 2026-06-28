@@ -8,6 +8,9 @@ Standard library only.
 Install by placing the `miniflux-cli/` folder where your agent loads skills (e.g.
 `.claude/skills/`), or run the bundled CLI directly as shown below.
 
+Requires **Python 3** (no third-party packages) and a reachable Miniflux server
+with an API token. Requests time out after 30s.
+
 ## Setup
 
     export MINIFLUX_BASE_URL="https://reader.example.org"
@@ -36,5 +39,5 @@ change entry state on the server; all other commands only read.
 ## Exit codes
 
 - `0` success
-- `1` API / network / JSON error
+- `1` API / network / JSON error (includes a 30s request timeout)
 - `2` usage / missing config

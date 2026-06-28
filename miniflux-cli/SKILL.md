@@ -22,6 +22,15 @@ relative to this skill's directory; from the repo root that's
 `catch-up` **change entry state on the server** — see "Commands that change state"
 below.
 
+## Requirements
+
+- **Python 3** (standard library only — nothing to install).
+- A reachable **Miniflux** server with an API token. The endpoints used
+  (`feeds/counters`, `categories/{id}/feeds`, entry/feed/category reads, and the
+  `PUT entries` write) are all stable Miniflux v1 API routes.
+- Network requests time out after **30s**; a hung or unreachable host exits `1`
+  with `Network timeout after 30s` rather than blocking.
+
 ## Auth
 
 The CLI needs a base URL and an API token. They resolve in this order (flags win
@@ -98,6 +107,11 @@ Unlike the read commands, these mutate the server:
 Only run these when the user actually wants their reader's state changed. For
 read-only browsing, prefer `entries --status unread`.
 
+Both writes are **idempotent**: they `PUT` an absolute target status, so re-running
+the same `mark` (or `catch-up` over the same entries) just sets the same state again
+and never double-applies. If one exits `1` on a transient network error, a single
+re-run is safe — but still surface the error first rather than retrying blindly.
+
 ## Resolving names to IDs
 
 `--category` and `--feed` take **numeric ids**, not names. When the user names a
@@ -133,8 +147,8 @@ Increase `--limit`, or step with `--offset` (`--offset 20`, `--offset 40`, ...).
 ## Exit codes
 
 - `0` — success; parse the JSON on stdout.
-- `1` — API, network, or JSON error. The stderr message includes Miniflux's own
-  `error_message` when available (e.g. a bad token or unreachable host). Report it;
-  don't silently retry.
+- `1` — API, network, or JSON error (including a 30s request timeout). The stderr
+  message includes Miniflux's own `error_message` when available (e.g. a bad token
+  or unreachable host). Report it; don't silently retry.
 - `2` — usage error or missing config (no base URL / token). Fix the invocation or
   ask the user for credentials.

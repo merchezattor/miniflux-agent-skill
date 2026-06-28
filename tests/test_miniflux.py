@@ -1,6 +1,7 @@
 import io
 import json
 import os
+import socket
 import sys
 import unittest
 import urllib.error
@@ -97,6 +98,34 @@ class TestApiRequest(unittest.TestCase):
             with self.assertRaises(miniflux.MinifluxError) as ctx:
                 miniflux.api_request("https://x.example", "tok", "GET", "feeds")
         self.assertEqual(ctx.exception.exit_code, 1)
+
+    def test_timeout_exits_1(self):
+        with mock.patch(
+            "miniflux.urllib.request.urlopen",
+            side_effect=socket.timeout("timed out"),
+        ):
+            with self.assertRaises(miniflux.MinifluxError) as ctx:
+                miniflux.api_request("https://x.example", "tok", "GET", "feeds")
+        self.assertEqual(ctx.exception.exit_code, 1)
+        self.assertIn("timeout", str(ctx.exception).lower())
+
+    def test_urlerror_wrapping_timeout_reports_timeout(self):
+        with mock.patch(
+            "miniflux.urllib.request.urlopen",
+            side_effect=urllib.error.URLError(socket.timeout("timed out")),
+        ):
+            with self.assertRaises(miniflux.MinifluxError) as ctx:
+                miniflux.api_request("https://x.example", "tok", "GET", "feeds")
+        self.assertEqual(ctx.exception.exit_code, 1)
+        self.assertIn("timeout", str(ctx.exception).lower())
+
+    def test_passes_timeout_to_urlopen(self):
+        with mock.patch("miniflux.urllib.request.urlopen") as urlopen:
+            urlopen.return_value = self._fake_response({"ok": True})
+            miniflux.api_request("https://x.example", "tok", "GET", "feeds")
+        self.assertEqual(
+            urlopen.call_args.kwargs.get("timeout"), miniflux.REQUEST_TIMEOUT
+        )
 
     def test_invalid_json_exits_1(self):
         cm = mock.MagicMock()
