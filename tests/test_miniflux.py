@@ -194,6 +194,41 @@ class TestCmdEntries(unittest.TestCase):
         self.assertEqual(captured["params"]["starred"], "true")
 
 
+class TestReadDrillCommands(unittest.TestCase):
+    def test_cmd_fetch_content_path(self):
+        captured = {}
+
+        def call(method, path, params=None, data=None):
+            captured["method"] = method
+            captured["path"] = path
+            return {"content": "<p>full</p>"}
+
+        result = miniflux.cmd_fetch_content(_Args2(id=42), call)
+        self.assertEqual(captured["method"], "GET")
+        self.assertEqual(captured["path"], "entries/42/fetch-content")
+        self.assertEqual(result["content"], "<p>full</p>")
+
+    def test_cmd_counters_path(self):
+        captured = {}
+
+        def call(method, path, params=None, data=None):
+            captured["path"] = path
+            return {"unreads": {"1": 3}}
+
+        miniflux.cmd_counters(_Args2(), call)
+        self.assertEqual(captured["path"], "feeds/counters")
+
+    def test_cmd_feed_path(self):
+        captured = {}
+
+        def call(method, path, params=None, data=None):
+            captured["path"] = path
+            return {"id": 3}
+
+        miniflux.cmd_feed(_Args2(id=3), call)
+        self.assertEqual(captured["path"], "feeds/3")
+
+
 class TestOtherCommands(unittest.TestCase):
     def test_cmd_entry_keeps_content(self):
         captured = {}

@@ -93,6 +93,18 @@ def cmd_entry(args, call):
     return call("GET", "entries/{}".format(args.id))
 
 
+def cmd_fetch_content(args, call):
+    return call("GET", "entries/{}/fetch-content".format(args.id))
+
+
+def cmd_counters(args, call):
+    return call("GET", "feeds/counters")
+
+
+def cmd_feed(args, call):
+    return call("GET", "feeds/{}".format(args.id))
+
+
 def cmd_feeds(args, call):
     return call("GET", "feeds")
 
@@ -127,6 +139,19 @@ def build_parser():
     p_entry = sub.add_parser("entry", help="Get one entry by id (full content)")
     p_entry.add_argument("id", type=int)
     p_entry.set_defaults(func=cmd_entry)
+
+    p_fetch = sub.add_parser(
+        "fetch-content", help="Get full scraped article for one entry"
+    )
+    p_fetch.add_argument("id", type=int)
+    p_fetch.set_defaults(func=cmd_fetch_content)
+
+    p_counters = sub.add_parser("counters", help="Unread/read counts per feed")
+    p_counters.set_defaults(func=cmd_counters)
+
+    p_feed = sub.add_parser("feed", help="Get one feed by id")
+    p_feed.add_argument("id", type=int)
+    p_feed.set_defaults(func=cmd_feed)
 
     p_feeds = sub.add_parser("feeds", help="List all feeds")
     p_feeds.set_defaults(func=cmd_feeds)
