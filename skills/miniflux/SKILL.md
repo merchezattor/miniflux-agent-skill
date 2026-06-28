@@ -1,5 +1,5 @@
 ---
-name: miniflux-cli
+name: miniflux
 description: >-
   Read, browse, search, summarize, and triage the user's Miniflux RSS reader by
   driving the repo's miniflux.py CLI. Use this whenever the user wants to catch
@@ -17,7 +17,7 @@ required_environment_variables:
 This skill bundles `scripts/miniflux.py` — a zero-dependency CLI for browsing a
 Miniflux RSS instance. Run it as `python3 scripts/miniflux.py <command>` (path
 relative to this skill's directory; from the repo root that's
-`python3 miniflux-cli/scripts/miniflux.py`). Results are pretty-printed JSON on
+`python3 skills/miniflux/scripts/miniflux.py`). Results are pretty-printed JSON on
 **stdout**; errors go to **stderr**. Most commands only read, but `mark` and
 `catch-up` **change entry state on the server** — see "Commands that change state"
 below.

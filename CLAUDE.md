@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A Claude Code **skill** (`miniflux-cli/`) that lets an agent read and triage a
+A Claude Code **skill** (`skills/miniflux/`) that lets an agent read and triage a
 Miniflux RSS instance. The skill bundles a single-file, **read-mostly**,
-standard-library-only Python CLI (`miniflux-cli/scripts/miniflux.py`): every command
+standard-library-only Python CLI (`skills/miniflux/scripts/miniflux.py`): every command
 is a GET except `mark` and `catch-up`, which change entry state. It is installed by
-dropping `miniflux-cli/`
+dropping `skills/miniflux/`
 where an agent loads skills (e.g. `.claude/skills/`). There is no package, no
 dependencies, and no build step — `miniflux.py` is the entire product.
 
@@ -23,8 +23,8 @@ python3 -m unittest tests.test_miniflux.TestResolveConfig -v
 python3 -m unittest tests.test_miniflux.TestCmdEntries.test_feed_filter_changes_path -v
 
 # Run the CLI (from repo root)
-python3 miniflux-cli/scripts/miniflux.py feeds
-python3 miniflux-cli/scripts/miniflux.py entries --status unread --limit 30
+python3 skills/miniflux/scripts/miniflux.py feeds
+python3 skills/miniflux/scripts/miniflux.py entries --status unread --limit 30
 ```
 
 Auth comes from `MINIFLUX_BASE_URL` + `MINIFLUX_API_TOKEN` (or `--base-url` / `--token`
@@ -53,7 +53,7 @@ flags, which win over env). `.env` holds local credentials and is gitignored.
 returns a copy and never mutates input). `cmd_entry` keeps full `content`. This is
 intentional: agents `entries` to scan titles/ids/timestamps cheaply, then `entry <id>`
 only for articles they actually need to read. Preserve this asymmetry — it's the whole
-token-efficiency design, documented for the agent in `miniflux-cli/SKILL.md`.
+token-efficiency design, documented for the agent in `skills/miniflux/SKILL.md`.
 
 ### Filtering by feed vs. everything else
 
@@ -78,11 +78,11 @@ resolve names via `categories`/`feeds` first (see SKILL.md workflows).
 
 When you change the CLI's flags, output shape, or exit codes, update **all** of:
 
-1. `miniflux-cli/scripts/miniflux.py` — the implementation
-2. `miniflux-cli/SKILL.md` — the agent-facing instructions (commands, workflows, exit codes)
+1. `skills/miniflux/scripts/miniflux.py` — the implementation
+2. `skills/miniflux/SKILL.md` — the agent-facing instructions (commands, workflows, exit codes)
 3. `README.md` — the human-facing summary
 4. `tests/test_miniflux.py` — coverage
-5. `miniflux-cli/evals/evals.json` — skill-triggering evals, if behavior the prompts rely on changes
+5. `skills/miniflux/evals/evals.json` — skill-triggering evals, if behavior the prompts rely on changes
 
 ## Design docs
 
