@@ -30,12 +30,17 @@ def resolve_config(arg_base_url, arg_token, env):
     return base_url.rstrip("/"), token
 
 
-def api_request(base_url, token, method, path, params=None):
+def api_request(base_url, token, method, path, params=None, data=None):
     url = "{}/v1/{}".format(base_url, path)
     if params:
         url = "{}?{}".format(url, urllib.parse.urlencode(params, doseq=True))
-    req = urllib.request.Request(url, method=method)
+    body_bytes = None
+    if data is not None:
+        body_bytes = json.dumps(data).encode("utf-8")
+    req = urllib.request.Request(url, data=body_bytes, method=method)
     req.add_header("X-Auth-Token", token)
+    if body_bytes is not None:
+        req.add_header("Content-Type", "application/json")
     try:
         with urllib.request.urlopen(req) as resp:
             body = resp.read()
@@ -48,6 +53,8 @@ def api_request(base_url, token, method, path, params=None):
         raise MinifluxError("API error {}: {}".format(exc.code, message), exit_code=1)
     except urllib.error.URLError as exc:
         raise MinifluxError("Network error: {}".format(exc.reason), exit_code=1)
+    if not body:
+        return None
     try:
         return json.loads(body)
     except ValueError:
@@ -139,8 +146,8 @@ def main(argv=None):
     try:
         base_url, token = resolve_config(args.base_url, args.token, os.environ)
 
-        def call(method, path, params=None):
-            return api_request(base_url, token, method, path, params)
+        def call(method, path, params=None, data=None):
+            return api_request(base_url, token, method, path, params, data)
 
         result = args.func(args, call)
     except MinifluxError as exc:

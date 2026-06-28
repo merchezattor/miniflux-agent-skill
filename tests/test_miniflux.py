@@ -106,6 +106,32 @@ class TestApiRequest(unittest.TestCase):
                 miniflux.api_request("https://x.example", "tok", "GET", "feeds")
         self.assertEqual(ctx.exception.exit_code, 1)
 
+    def _fake_empty_response(self):
+        cm = mock.MagicMock()
+        cm.__enter__.return_value.read.return_value = b""
+        return cm
+
+    def test_put_sends_json_body_and_content_type(self):
+        with mock.patch("miniflux.urllib.request.urlopen") as urlopen:
+            urlopen.return_value = self._fake_empty_response()
+            result = miniflux.api_request(
+                "https://x.example", "tok", "PUT", "entries",
+                data={"entry_ids": [1, 2], "status": "read"},
+            )
+        req = urlopen.call_args.args[0]
+        self.assertEqual(req.get_method(), "PUT")
+        self.assertEqual(
+            req.data, json.dumps({"entry_ids": [1, 2], "status": "read"}).encode("utf-8")
+        )
+        self.assertEqual(req.get_header("Content-type"), "application/json")
+        self.assertIsNone(result)
+
+    def test_empty_body_returns_none(self):
+        with mock.patch("miniflux.urllib.request.urlopen") as urlopen:
+            urlopen.return_value = self._fake_empty_response()
+            result = miniflux.api_request("https://x.example", "tok", "GET", "feeds")
+        self.assertIsNone(result)
+
 
 class TestStripContent(unittest.TestCase):
     def test_removes_content_key_only(self):
