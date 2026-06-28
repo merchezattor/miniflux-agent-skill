@@ -159,5 +159,50 @@ class TestCmdEntries(unittest.TestCase):
         self.assertEqual(captured["params"]["starred"], "true")
 
 
+class TestOtherCommands(unittest.TestCase):
+    def test_cmd_entry_keeps_content(self):
+        captured = {}
+
+        def call(method, path, params=None):
+            captured["path"] = path
+            return {"id": 42, "content": "<p>full</p>"}
+
+        result = miniflux.cmd_entry(_Args2(id=42), call)
+        self.assertEqual(captured["path"], "entries/42")
+        self.assertEqual(result["content"], "<p>full</p>")
+
+    def test_cmd_feeds(self):
+        def call(method, path, params=None):
+            self.assertEqual(path, "feeds")
+            return [{"id": 1}]
+
+        self.assertEqual(miniflux.cmd_feeds(_Args2(), call), [{"id": 1}])
+
+    def test_cmd_categories_without_counts(self):
+        captured = {}
+
+        def call(method, path, params=None):
+            captured["params"] = params
+            return [{"id": 1}]
+
+        miniflux.cmd_categories(_Args2(counts=False), call)
+        self.assertIsNone(captured["params"])
+
+    def test_cmd_categories_with_counts(self):
+        captured = {}
+
+        def call(method, path, params=None):
+            captured["params"] = params
+            return [{"id": 1}]
+
+        miniflux.cmd_categories(_Args2(counts=True), call)
+        self.assertEqual(captured["params"], {"counts": "true"})
+
+
+class _Args2:
+    def __init__(self, **kw):
+        self.__dict__.update(kw)
+
+
 if __name__ == "__main__":
     unittest.main()

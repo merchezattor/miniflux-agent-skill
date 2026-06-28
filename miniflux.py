@@ -80,3 +80,16 @@ def cmd_entries(args, call):
     if isinstance(result, dict) and "entries" in result:
         result["entries"] = [strip_content(e) for e in result["entries"]]
     return result
+
+
+def cmd_entry(args, call):
+    return call("GET", "entries/{}".format(args.id))
+
+
+def cmd_feeds(args, call):
+    return call("GET", "feeds")
+
+
+def cmd_categories(args, call):
+    params = {"counts": "true"} if args.counts else None
+    return call("GET", "categories", params)
