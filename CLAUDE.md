@@ -83,11 +83,3 @@ When you change the CLI's flags, output shape, or exit codes, update **all** of:
 3. `README.md` — the human-facing summary
 4. `tests/test_miniflux.py` — coverage
 5. `skills/miniflux/evals/evals.json` — skill-triggering evals, if behavior the prompts rely on changes
-
-## Design docs
-
-`docs/superpowers/specs/` and `docs/superpowers/plans/` hold the design spec and
-implementation plan for the initial build — read these for the rationale behind the
-two-step scan/drill model and the original read-only scope. The
-`2026-06-28-miniflux-cli-commands-*` spec and plan cover the later drill-down and
-write (`mark`, `catch-up`) commands.
