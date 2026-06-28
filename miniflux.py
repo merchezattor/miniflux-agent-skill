@@ -28,3 +28,27 @@ def resolve_config(arg_base_url, arg_token, env):
             "Missing API token: set --token or MINIFLUX_API_TOKEN", exit_code=2
         )
     return base_url.rstrip("/"), token
+
+
+def api_request(base_url, token, method, path, params=None):
+    url = "{}/v1/{}".format(base_url, path)
+    if params:
+        url = "{}?{}".format(url, urllib.parse.urlencode(params, doseq=True))
+    req = urllib.request.Request(url, method=method)
+    req.add_header("X-Auth-Token", token)
+    try:
+        with urllib.request.urlopen(req) as resp:
+            body = resp.read()
+    except urllib.error.HTTPError as exc:
+        message = exc.read().decode("utf-8", "replace")
+        try:
+            message = json.loads(message).get("error_message", message)
+        except (ValueError, AttributeError):
+            pass
+        raise MinifluxError("API error {}: {}".format(exc.code, message), exit_code=1)
+    except urllib.error.URLError as exc:
+        raise MinifluxError("Network error: {}".format(exc.reason), exit_code=1)
+    try:
+        return json.loads(body)
+    except ValueError:
+        raise MinifluxError("Invalid JSON response from server", exit_code=1)
