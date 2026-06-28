@@ -77,6 +77,17 @@ class TestApiRequest(unittest.TestCase):
         self.assertEqual(ctx.exception.exit_code, 1)
         self.assertIn("Access Unauthorized", str(ctx.exception))
 
+    def test_http_error_non_json_body_falls_back_to_raw_text(self):
+        err = urllib.error.HTTPError(
+            "u", 500, "Internal Server Error", {},
+            io.BytesIO(b"Internal Server Error"),
+        )
+        with mock.patch("miniflux.urllib.request.urlopen", side_effect=err):
+            with self.assertRaises(miniflux.MinifluxError) as ctx:
+                miniflux.api_request("https://x.example", "tok", "GET", "feeds")
+        self.assertEqual(ctx.exception.exit_code, 1)
+        self.assertIn("Internal Server Error", str(ctx.exception))
+
     def test_network_error_exits_1(self):
         with mock.patch(
             "miniflux.urllib.request.urlopen",
@@ -135,9 +146,6 @@ class TestCmdEntries(unittest.TestCase):
         self.assertNotIn("content", result["entries"][0])
 
     def test_feed_filter_changes_path(self):
-        def call(method, path, params=None):
-            return {"total": 0, "entries": []}
-
         captured = {}
 
         def capture(method, path, params=None):
