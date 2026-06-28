@@ -1,6 +1,6 @@
 # miniflux-agent-cli
 
-A Claude Code **skill** that lets an agent read, browse, search, summarize, and
+A **skill** that lets an agent read, browse, search, summarize, and
 triage a [Miniflux](https://miniflux.app) RSS instance. It bundles a zero-install,
 single-file Python CLI ([`skills/miniflux/scripts/miniflux.py`](skills/miniflux/scripts/miniflux.py))
 with JSON-only output, designed to be driven by an AI agent rather than a human.
