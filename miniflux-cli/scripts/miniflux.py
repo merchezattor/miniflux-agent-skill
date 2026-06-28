@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Miniflux read-only CLI for agents. Standard library only."""
+"""Miniflux CLI for agents. Standard library only."""
 
 import argparse
 import json
@@ -139,7 +139,7 @@ def cmd_catch_up(args, call):
 
 def build_parser():
     parser = argparse.ArgumentParser(
-        prog="miniflux", description="Miniflux read-only CLI for agents"
+        prog="miniflux", description="Miniflux CLI for agents"
     )
     parser.add_argument("--base-url", help="Miniflux base URL (or MINIFLUX_BASE_URL)")
     parser.add_argument("--token", help="API token (or MINIFLUX_API_TOKEN)")

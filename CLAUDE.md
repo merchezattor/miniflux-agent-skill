@@ -4,9 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A Claude Code **skill** (`miniflux-cli/`) that lets an agent read a Miniflux RSS
-instance. The skill bundles a single-file, **read-only**, standard-library-only Python
-CLI (`miniflux-cli/scripts/miniflux.py`). It is installed by dropping `miniflux-cli/`
+A Claude Code **skill** (`miniflux-cli/`) that lets an agent read and triage a
+Miniflux RSS instance. The skill bundles a single-file, **read-mostly**,
+standard-library-only Python CLI (`miniflux-cli/scripts/miniflux.py`): every command
+is a GET except `mark` and `catch-up`, which change entry state. It is installed by
+dropping `miniflux-cli/`
 where an agent loads skills (e.g. `.claude/skills/`). There is no package, no
 dependencies, and no build step — `miniflux.py` is the entire product.
 
@@ -65,8 +67,10 @@ resolve names via `categories`/`feeds` first (see SKILL.md workflows).
 - **Standard library only.** No third-party imports in `miniflux.py` or the tests — this
   is a hard constraint that keeps the skill zero-install. `.format()` strings (not
   f-strings) are used throughout for broad-runtime portability.
-- **Read-only.** Every command is a GET. Do not add mutating endpoints without an
-  explicit decision — SKILL.md promises the agent it's "always safe to run."
+- **Read-mostly.** Every command is a GET except `mark` and `catch-up` (both PUT
+  `entries`). Adding further mutating endpoints is a deliberate decision — keep the
+  read commands free of side effects, and document any new writes in SKILL.md's
+  "Commands that change state" section.
 - Tests mock at `miniflux.urllib.request.urlopen` (the real boundary) or inject a fake
   `call`; follow that pattern rather than hitting a live server.
 
@@ -84,4 +88,6 @@ When you change the CLI's flags, output shape, or exit codes, update **all** of:
 
 `docs/superpowers/specs/` and `docs/superpowers/plans/` hold the design spec and
 implementation plan for the initial build — read these for the rationale behind the
-two-step scan/drill model and the read-only scope.
+two-step scan/drill model and the original read-only scope. The
+`2026-06-28-miniflux-cli-commands-*` spec and plan cover the later drill-down and
+write (`mark`, `catch-up`) commands.

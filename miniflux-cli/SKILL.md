@@ -1,12 +1,12 @@
 ---
 name: miniflux-cli
 description: >-
-  Read, browse, search, and summarize the user's Miniflux RSS reader by driving
-  the repo's read-only miniflux.py CLI. Use this whenever the user wants to catch
+  Read, browse, search, summarize, and triage the user's Miniflux RSS reader by
+  driving the repo's miniflux.py CLI. Use this whenever the user wants to catch
   up on their feeds or articles — e.g. "what's unread", "summarize my feeds",
   "any new articles in <category>", "search my reader for X", "show my starred",
-  "what did <site> publish lately" — even when they don't mention Miniflux or the
-  CLI by name.
+  "what did <site> publish lately", "catch me up and mark as read" — even when
+  they don't mention Miniflux or the CLI by name.
 required_environment_variables:
   - MINIFLUX_BASE_URL
   - MINIFLUX_API_TOKEN
@@ -14,12 +14,13 @@ required_environment_variables:
 
 # Miniflux CLI
 
-This skill bundles `scripts/miniflux.py` — a zero-dependency, **read-only** CLI for
-browsing a Miniflux RSS instance. Run it as `python3 scripts/miniflux.py <command>`
-(path relative to this skill's directory; from the repo root that's
+This skill bundles `scripts/miniflux.py` — a zero-dependency CLI for browsing a
+Miniflux RSS instance. Run it as `python3 scripts/miniflux.py <command>` (path
+relative to this skill's directory; from the repo root that's
 `python3 miniflux-cli/scripts/miniflux.py`). Results are pretty-printed JSON on
-**stdout**; errors go to **stderr**. Nothing it does mutates the server, so it is
-always safe to run.
+**stdout**; errors go to **stderr**. Most commands only read, but `mark` and
+`catch-up` **change entry state on the server** — see "Commands that change state"
+below.
 
 ## Auth
 
@@ -42,8 +43,13 @@ python3 scripts/miniflux.py entries [--limit N] [--offset N]
                                     [--category ID] [--feed ID]
                                     [--search TEXT] [--starred]
 python3 scripts/miniflux.py entry <id>
-python3 scripts/miniflux.py feeds
+python3 scripts/miniflux.py fetch-content <id>
+python3 scripts/miniflux.py feeds [--category ID]
+python3 scripts/miniflux.py feed <id>
+python3 scripts/miniflux.py counters
 python3 scripts/miniflux.py categories [--counts]
+python3 scripts/miniflux.py mark read|unread|removed <id> [<id> ...]
+python3 scripts/miniflux.py catch-up [--limit N] [--feed ID] [--category ID]
 ```
 
 - **`entries`** → `{"total": N, "entries": [...]}`. Each entry's `content` field is
@@ -51,7 +57,14 @@ python3 scripts/miniflux.py categories [--counts]
   --order published_at --direction desc`. `--status` may be given more than once
   (e.g. `--status unread --status read`). `--feed ID` lists only that feed's entries.
 - **`entry <id>`** → a single entry **with full `content`** (the article HTML/text).
-- **`feeds`** → every subscribed feed (each has an `id`, `title`, `category`, ...).
+- **`fetch-content <id>`** → `{"content": ...}` with the **full scraped original
+  article**. Use when an `entry`'s `content` is truncated or empty. Third drill
+  level after `entries` (no content) and `entry` (feed content).
+- **`feeds [--category ID]`** → every subscribed feed (each has an `id`, `title`,
+  `category`, ...), or only that category's feeds.
+- **`feed <id>`** → one feed's details.
+- **`counters`** → unread/read counts per feed id. Cheap triage to find which
+  feeds have new items without paging entries.
 - **`categories`** → all categories. Add `--counts` for `unread_count` / `total_count`
   per category.
 
@@ -67,6 +80,23 @@ a lot of tokens for little benefit. Work in two steps:
 Avoid calling `entry <id>` in a loop over many entries. If the user wants a digest of
 N articles, fetch full content only for the ones that matter, and prefer titles +
 summaries from the `entries` list when that's enough to answer.
+
+## Commands that change state
+
+Unlike the read commands, these mutate the server:
+
+- **`mark <status> <id...>`** sets one or more entries to `read`, `unread`, or
+  `removed`. Example: `mark read 123 456`. Prints `{"entry_ids": [...],
+  "status": "..."}` on success.
+- **`catch-up [--limit N] [--feed ID] [--category ID]`** fetches unread entries,
+  **marks them read**, and returns them (content stripped, like `entries`). Use it
+  for "catch me up and clear my unread". It marks before returning, so a
+  successful result means those entries are now read. With no unread it returns
+  `[]` and changes nothing. When both `--feed` and `--category` are given, `--feed`
+  wins. Default `--limit` is 100.
+
+Only run these when the user actually wants their reader's state changed. For
+read-only browsing, prefer `entries --status unread`.
 
 ## Resolving names to IDs
 

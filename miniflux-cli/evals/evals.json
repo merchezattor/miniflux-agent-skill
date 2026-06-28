@@ -18,6 +18,12 @@
       "prompt": "Search my feeds for anything about Kubernetes and show me what you find.",
       "expected_output": "Triggers the skill; runs `entries --search \"Kubernetes\"`, presents matching titles/feeds, and offers to drill into a specific article with `entry <id>`.",
       "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Catch me up on my unread articles and clear them out as you go.",
+      "expected_output": "Triggers the skill; runs `catch-up` (optionally scoped with --feed/--category) which fetches unread entries AND marks them read in one step, then summarizes. Recognizes catch-up mutates server state, unlike plain `entries --status unread`.",
+      "files": []
     }
   ]
 }
