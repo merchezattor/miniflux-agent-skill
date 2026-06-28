@@ -1,6 +1,7 @@
 .code-review-graph/
 .claude/
 .superpowers/
+docs/superpowers/
 __pycache__/
 *.pyc
 .env
