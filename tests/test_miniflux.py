@@ -204,5 +204,46 @@ class _Args2:
         self.__dict__.update(kw)
 
 
+class TestMain(unittest.TestCase):
+    def test_feeds_prints_json_and_returns_0(self):
+        env = {"MINIFLUX_BASE_URL": "https://x.example", "MINIFLUX_API_TOKEN": "t"}
+        out = io.StringIO()
+        with mock.patch.dict(os.environ, env, clear=True), \
+                mock.patch("miniflux.api_request", return_value=[{"id": 1}]), \
+                mock.patch("sys.stdout", out):
+            code = miniflux.main(["feeds"])
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(out.getvalue()), [{"id": 1}])
+
+    def test_entries_strips_content_end_to_end(self):
+        env = {"MINIFLUX_BASE_URL": "https://x.example", "MINIFLUX_API_TOKEN": "t"}
+        payload = {"total": 1, "entries": [{"id": 5, "content": "big"}]}
+        out = io.StringIO()
+        with mock.patch.dict(os.environ, env, clear=True), \
+                mock.patch("miniflux.api_request", return_value=payload), \
+                mock.patch("sys.stdout", out):
+            code = miniflux.main(["entries", "--limit", "1"])
+        self.assertEqual(code, 0)
+        self.assertNotIn("content", json.loads(out.getvalue())["entries"][0])
+
+    def test_missing_config_returns_2_and_writes_stderr(self):
+        err = io.StringIO()
+        with mock.patch.dict(os.environ, {}, clear=True), \
+                mock.patch("sys.stderr", err):
+            code = miniflux.main(["feeds"])
+        self.assertEqual(code, 2)
+        self.assertTrue(err.getvalue().strip())
+
+    def test_api_error_returns_1(self):
+        env = {"MINIFLUX_BASE_URL": "https://x.example", "MINIFLUX_API_TOKEN": "t"}
+        err = io.StringIO()
+        with mock.patch.dict(os.environ, env, clear=True), \
+                mock.patch("miniflux.api_request",
+                           side_effect=miniflux.MinifluxError("boom", exit_code=1)), \
+                mock.patch("sys.stderr", err):
+            code = miniflux.main(["feeds"])
+        self.assertEqual(code, 1)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -93,3 +93,62 @@ def cmd_feeds(args, call):
 def cmd_categories(args, call):
     params = {"counts": "true"} if args.counts else None
     return call("GET", "categories", params)
+
+
+def build_parser():
+    parser = argparse.ArgumentParser(
+        prog="miniflux", description="Miniflux read-only CLI for agents"
+    )
+    parser.add_argument("--base-url", help="Miniflux base URL (or MINIFLUX_BASE_URL)")
+    parser.add_argument("--token", help="API token (or MINIFLUX_API_TOKEN)")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    p_entries = sub.add_parser("entries", help="List recent entries (content stripped)")
+    p_entries.add_argument("--limit", type=int, default=20)
+    p_entries.add_argument("--offset", type=int, default=0)
+    p_entries.add_argument(
+        "--status", action="append", choices=["unread", "read", "removed"]
+    )
+    p_entries.add_argument("--order", default="published_at")
+    p_entries.add_argument("--direction", choices=["asc", "desc"], default="desc")
+    p_entries.add_argument("--category", type=int)
+    p_entries.add_argument("--feed", type=int)
+    p_entries.add_argument("--search")
+    p_entries.add_argument("--starred", action="store_true")
+    p_entries.set_defaults(func=cmd_entries)
+
+    p_entry = sub.add_parser("entry", help="Get one entry by id (full content)")
+    p_entry.add_argument("id", type=int)
+    p_entry.set_defaults(func=cmd_entry)
+
+    p_feeds = sub.add_parser("feeds", help="List all feeds")
+    p_feeds.set_defaults(func=cmd_feeds)
+
+    p_categories = sub.add_parser("categories", help="List categories")
+    p_categories.add_argument(
+        "--counts", action="store_true", help="Include unread/total counts"
+    )
+    p_categories.set_defaults(func=cmd_categories)
+
+    return parser
+
+
+def main(argv=None):
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    try:
+        base_url, token = resolve_config(args.base_url, args.token, os.environ)
+
+        def call(method, path, params=None):
+            return api_request(base_url, token, method, path, params)
+
+        result = args.func(args, call)
+    except MinifluxError as exc:
+        print(str(exc), file=sys.stderr)
+        return exc.exit_code
+    print(json.dumps(result, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
