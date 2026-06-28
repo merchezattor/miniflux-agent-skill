@@ -116,6 +116,11 @@ def cmd_categories(args, call):
     return call("GET", "categories", params)
 
 
+def cmd_mark(args, call):
+    call("PUT", "entries", data={"entry_ids": args.ids, "status": args.status})
+    return {"entry_ids": args.ids, "status": args.status}
+
+
 def build_parser():
     parser = argparse.ArgumentParser(
         prog="miniflux", description="Miniflux read-only CLI for agents"
@@ -166,6 +171,11 @@ def build_parser():
         "--counts", action="store_true", help="Include unread/total counts"
     )
     p_categories.set_defaults(func=cmd_categories)
+
+    p_mark = sub.add_parser("mark", help="Mark entries read/unread/removed")
+    p_mark.add_argument("status", choices=["read", "unread", "removed"])
+    p_mark.add_argument("ids", nargs="+", type=int)
+    p_mark.set_defaults(func=cmd_mark)
 
     return parser
 

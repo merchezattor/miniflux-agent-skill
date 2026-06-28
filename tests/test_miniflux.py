@@ -279,6 +279,23 @@ class TestOtherCommands(unittest.TestCase):
         self.assertEqual(captured["params"], {"counts": "true"})
 
 
+class TestCmdMark(unittest.TestCase):
+    def test_sends_put_with_entry_ids_and_status(self):
+        captured = {}
+
+        def call(method, path, params=None, data=None):
+            captured["method"] = method
+            captured["path"] = path
+            captured["data"] = data
+            return None
+
+        result = miniflux.cmd_mark(_Args2(status="read", ids=[1, 2]), call)
+        self.assertEqual(captured["method"], "PUT")
+        self.assertEqual(captured["path"], "entries")
+        self.assertEqual(captured["data"], {"entry_ids": [1, 2], "status": "read"})
+        self.assertEqual(result, {"entry_ids": [1, 2], "status": "read"})
+
+
 class _Args2:
     def __init__(self, **kw):
         self.__dict__.update(kw)
@@ -305,6 +322,18 @@ class TestMain(unittest.TestCase):
             code = miniflux.main(["entries", "--limit", "1"])
         self.assertEqual(code, 0)
         self.assertNotIn("content", json.loads(out.getvalue())["entries"][0])
+
+    def test_mark_prints_confirmation_and_returns_0(self):
+        env = {"MINIFLUX_BASE_URL": "https://x.example", "MINIFLUX_API_TOKEN": "t"}
+        out = io.StringIO()
+        with mock.patch.dict(os.environ, env, clear=True), \
+                mock.patch("miniflux.api_request", return_value=None), \
+                mock.patch("sys.stdout", out):
+            code = miniflux.main(["mark", "read", "5", "6"])
+        self.assertEqual(code, 0)
+        self.assertEqual(
+            json.loads(out.getvalue()), {"entry_ids": [5, 6], "status": "read"}
+        )
 
     def test_missing_config_returns_2_and_writes_stderr(self):
         err = io.StringIO()
