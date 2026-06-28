@@ -106,6 +106,8 @@ def cmd_feed(args, call):
 
 
 def cmd_feeds(args, call):
+    if args.category is not None:
+        return call("GET", "categories/{}/feeds".format(args.category))
     return call("GET", "feeds")
 
 
@@ -154,6 +156,9 @@ def build_parser():
     p_feed.set_defaults(func=cmd_feed)
 
     p_feeds = sub.add_parser("feeds", help="List all feeds")
+    p_feeds.add_argument(
+        "--category", type=int, help="List only this category's feeds"
+    )
     p_feeds.set_defaults(func=cmd_feeds)
 
     p_categories = sub.add_parser("categories", help="List categories")

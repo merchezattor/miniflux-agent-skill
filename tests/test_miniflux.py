@@ -241,12 +241,22 @@ class TestOtherCommands(unittest.TestCase):
         self.assertEqual(captured["path"], "entries/42")
         self.assertEqual(result["content"], "<p>full</p>")
 
-    def test_cmd_feeds(self):
-        def call(method, path, params=None):
+    def test_cmd_feeds_all(self):
+        def call(method, path, params=None, data=None):
             self.assertEqual(path, "feeds")
             return [{"id": 1}]
 
-        self.assertEqual(miniflux.cmd_feeds(_Args2(), call), [{"id": 1}])
+        self.assertEqual(miniflux.cmd_feeds(_Args2(category=None), call), [{"id": 1}])
+
+    def test_cmd_feeds_by_category(self):
+        captured = {}
+
+        def call(method, path, params=None, data=None):
+            captured["path"] = path
+            return [{"id": 5}]
+
+        miniflux.cmd_feeds(_Args2(category=4), call)
+        self.assertEqual(captured["path"], "categories/4/feeds")
 
     def test_cmd_categories_without_counts(self):
         captured = {}
