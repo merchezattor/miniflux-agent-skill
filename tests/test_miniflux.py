@@ -296,6 +296,67 @@ class TestCmdMark(unittest.TestCase):
         self.assertEqual(result, {"entry_ids": [1, 2], "status": "read"})
 
 
+class TestCmdCatchUp(unittest.TestCase):
+    def _recorder(self, get_result):
+        calls = []
+
+        def call(method, path, params=None, data=None):
+            calls.append(
+                {"method": method, "path": path, "params": params, "data": data}
+            )
+            if method == "GET":
+                return get_result
+            return None
+
+        return calls, call
+
+    def test_marks_unread_read_and_strips_content(self):
+        get_result = {"entries": [
+            {"id": 1, "content": "a"}, {"id": 2, "content": "b"},
+        ]}
+        calls, call = self._recorder(get_result)
+        result = miniflux.cmd_catch_up(_Args(), call)
+        self.assertEqual(calls[0]["method"], "GET")
+        self.assertEqual(calls[0]["path"], "entries")
+        self.assertEqual(calls[0]["params"]["status"], "unread")
+        self.assertEqual(calls[1]["method"], "PUT")
+        self.assertEqual(calls[1]["path"], "entries")
+        self.assertEqual(calls[1]["data"], {"entry_ids": [1, 2], "status": "read"})
+        self.assertEqual(result, [{"id": 1}, {"id": 2}])
+
+    def test_empty_unread_skips_put(self):
+        calls, call = self._recorder({"entries": []})
+        result = miniflux.cmd_catch_up(_Args(), call)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0]["method"], "GET")
+        self.assertEqual(result, [])
+
+    def test_feed_filter_changes_path(self):
+        calls, call = self._recorder({"entries": []})
+        miniflux.cmd_catch_up(_Args(feed=7), call)
+        self.assertEqual(calls[0]["path"], "feeds/7/entries")
+
+    def test_category_filter_sets_param(self):
+        calls, call = self._recorder({"entries": []})
+        miniflux.cmd_catch_up(_Args(category=3), call)
+        self.assertEqual(calls[0]["path"], "entries")
+        self.assertEqual(calls[0]["params"]["category_id"], 3)
+
+    def test_feed_wins_over_category(self):
+        calls, call = self._recorder({"entries": []})
+        miniflux.cmd_catch_up(_Args(feed=7, category=3), call)
+        self.assertEqual(calls[0]["path"], "feeds/7/entries")
+
+    def test_put_failure_propagates_and_does_not_return(self):
+        def call(method, path, params=None, data=None):
+            if method == "GET":
+                return {"entries": [{"id": 1, "content": "a"}]}
+            raise miniflux.MinifluxError("boom", exit_code=1)
+
+        with self.assertRaises(miniflux.MinifluxError):
+            miniflux.cmd_catch_up(_Args(), call)
+
+
 class _Args2:
     def __init__(self, **kw):
         self.__dict__.update(kw)

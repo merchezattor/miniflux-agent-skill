@@ -121,6 +121,22 @@ def cmd_mark(args, call):
     return {"entry_ids": args.ids, "status": args.status}
 
 
+def cmd_catch_up(args, call):
+    params = {"status": "unread", "limit": args.limit}
+    if args.category is not None:
+        params["category_id"] = args.category
+    if args.feed is not None:
+        path = "feeds/{}/entries".format(args.feed)
+    else:
+        path = "entries"
+    result = call("GET", path, params)
+    entries = result.get("entries", []) if isinstance(result, dict) else []
+    ids = [e["id"] for e in entries]
+    if ids:
+        call("PUT", "entries", data={"entry_ids": ids, "status": "read"})
+    return [strip_content(e) for e in entries]
+
+
 def build_parser():
     parser = argparse.ArgumentParser(
         prog="miniflux", description="Miniflux read-only CLI for agents"
@@ -176,6 +192,14 @@ def build_parser():
     p_mark.add_argument("status", choices=["read", "unread", "removed"])
     p_mark.add_argument("ids", nargs="+", type=int)
     p_mark.set_defaults(func=cmd_mark)
+
+    p_catch = sub.add_parser(
+        "catch-up", help="Fetch unread entries and mark them read"
+    )
+    p_catch.add_argument("--limit", type=int, default=100)
+    p_catch.add_argument("--feed", type=int)
+    p_catch.add_argument("--category", type=int)
+    p_catch.set_defaults(func=cmd_catch_up)
 
     return parser
 
