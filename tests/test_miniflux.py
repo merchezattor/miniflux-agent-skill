@@ -106,6 +106,32 @@ class TestApiRequest(unittest.TestCase):
                 miniflux.api_request("https://x.example", "tok", "GET", "feeds")
         self.assertEqual(ctx.exception.exit_code, 1)
 
+    def _fake_empty_response(self):
+        cm = mock.MagicMock()
+        cm.__enter__.return_value.read.return_value = b""
+        return cm
+
+    def test_put_sends_json_body_and_content_type(self):
+        with mock.patch("miniflux.urllib.request.urlopen") as urlopen:
+            urlopen.return_value = self._fake_empty_response()
+            result = miniflux.api_request(
+                "https://x.example", "tok", "PUT", "entries",
+                data={"entry_ids": [1, 2], "status": "read"},
+            )
+        req = urlopen.call_args.args[0]
+        self.assertEqual(req.get_method(), "PUT")
+        self.assertEqual(
+            req.data, json.dumps({"entry_ids": [1, 2], "status": "read"}).encode("utf-8")
+        )
+        self.assertEqual(req.get_header("Content-type"), "application/json")
+        self.assertIsNone(result)
+
+    def test_empty_body_returns_none(self):
+        with mock.patch("miniflux.urllib.request.urlopen") as urlopen:
+            urlopen.return_value = self._fake_empty_response()
+            result = miniflux.api_request("https://x.example", "tok", "GET", "feeds")
+        self.assertIsNone(result)
+
 
 class TestStripContent(unittest.TestCase):
     def test_removes_content_key_only(self):
@@ -168,6 +194,41 @@ class TestCmdEntries(unittest.TestCase):
         self.assertEqual(captured["params"]["starred"], "true")
 
 
+class TestReadDrillCommands(unittest.TestCase):
+    def test_cmd_fetch_content_path(self):
+        captured = {}
+
+        def call(method, path, params=None, data=None):
+            captured["method"] = method
+            captured["path"] = path
+            return {"content": "<p>full</p>"}
+
+        result = miniflux.cmd_fetch_content(_Args2(id=42), call)
+        self.assertEqual(captured["method"], "GET")
+        self.assertEqual(captured["path"], "entries/42/fetch-content")
+        self.assertEqual(result["content"], "<p>full</p>")
+
+    def test_cmd_counters_path(self):
+        captured = {}
+
+        def call(method, path, params=None, data=None):
+            captured["path"] = path
+            return {"unreads": {"1": 3}}
+
+        miniflux.cmd_counters(_Args2(), call)
+        self.assertEqual(captured["path"], "feeds/counters")
+
+    def test_cmd_feed_path(self):
+        captured = {}
+
+        def call(method, path, params=None, data=None):
+            captured["path"] = path
+            return {"id": 3}
+
+        miniflux.cmd_feed(_Args2(id=3), call)
+        self.assertEqual(captured["path"], "feeds/3")
+
+
 class TestOtherCommands(unittest.TestCase):
     def test_cmd_entry_keeps_content(self):
         captured = {}
@@ -180,12 +241,22 @@ class TestOtherCommands(unittest.TestCase):
         self.assertEqual(captured["path"], "entries/42")
         self.assertEqual(result["content"], "<p>full</p>")
 
-    def test_cmd_feeds(self):
-        def call(method, path, params=None):
+    def test_cmd_feeds_all(self):
+        def call(method, path, params=None, data=None):
             self.assertEqual(path, "feeds")
             return [{"id": 1}]
 
-        self.assertEqual(miniflux.cmd_feeds(_Args2(), call), [{"id": 1}])
+        self.assertEqual(miniflux.cmd_feeds(_Args2(category=None), call), [{"id": 1}])
+
+    def test_cmd_feeds_by_category(self):
+        captured = {}
+
+        def call(method, path, params=None, data=None):
+            captured["path"] = path
+            return [{"id": 5}]
+
+        miniflux.cmd_feeds(_Args2(category=4), call)
+        self.assertEqual(captured["path"], "categories/4/feeds")
 
     def test_cmd_categories_without_counts(self):
         captured = {}
@@ -206,6 +277,84 @@ class TestOtherCommands(unittest.TestCase):
 
         miniflux.cmd_categories(_Args2(counts=True), call)
         self.assertEqual(captured["params"], {"counts": "true"})
+
+
+class TestCmdMark(unittest.TestCase):
+    def test_sends_put_with_entry_ids_and_status(self):
+        captured = {}
+
+        def call(method, path, params=None, data=None):
+            captured["method"] = method
+            captured["path"] = path
+            captured["data"] = data
+            return None
+
+        result = miniflux.cmd_mark(_Args2(status="read", ids=[1, 2]), call)
+        self.assertEqual(captured["method"], "PUT")
+        self.assertEqual(captured["path"], "entries")
+        self.assertEqual(captured["data"], {"entry_ids": [1, 2], "status": "read"})
+        self.assertEqual(result, {"entry_ids": [1, 2], "status": "read"})
+
+
+class TestCmdCatchUp(unittest.TestCase):
+    def _recorder(self, get_result):
+        calls = []
+
+        def call(method, path, params=None, data=None):
+            calls.append(
+                {"method": method, "path": path, "params": params, "data": data}
+            )
+            if method == "GET":
+                return get_result
+            return None
+
+        return calls, call
+
+    def test_marks_unread_read_and_strips_content(self):
+        get_result = {"entries": [
+            {"id": 1, "content": "a"}, {"id": 2, "content": "b"},
+        ]}
+        calls, call = self._recorder(get_result)
+        result = miniflux.cmd_catch_up(_Args(), call)
+        self.assertEqual(calls[0]["method"], "GET")
+        self.assertEqual(calls[0]["path"], "entries")
+        self.assertEqual(calls[0]["params"]["status"], "unread")
+        self.assertEqual(calls[1]["method"], "PUT")
+        self.assertEqual(calls[1]["path"], "entries")
+        self.assertEqual(calls[1]["data"], {"entry_ids": [1, 2], "status": "read"})
+        self.assertEqual(result, [{"id": 1}, {"id": 2}])
+
+    def test_empty_unread_skips_put(self):
+        calls, call = self._recorder({"entries": []})
+        result = miniflux.cmd_catch_up(_Args(), call)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0]["method"], "GET")
+        self.assertEqual(result, [])
+
+    def test_feed_filter_changes_path(self):
+        calls, call = self._recorder({"entries": []})
+        miniflux.cmd_catch_up(_Args(feed=7), call)
+        self.assertEqual(calls[0]["path"], "feeds/7/entries")
+
+    def test_category_filter_sets_param(self):
+        calls, call = self._recorder({"entries": []})
+        miniflux.cmd_catch_up(_Args(category=3), call)
+        self.assertEqual(calls[0]["path"], "entries")
+        self.assertEqual(calls[0]["params"]["category_id"], 3)
+
+    def test_feed_wins_over_category(self):
+        calls, call = self._recorder({"entries": []})
+        miniflux.cmd_catch_up(_Args(feed=7, category=3), call)
+        self.assertEqual(calls[0]["path"], "feeds/7/entries")
+
+    def test_put_failure_propagates_and_does_not_return(self):
+        def call(method, path, params=None, data=None):
+            if method == "GET":
+                return {"entries": [{"id": 1, "content": "a"}]}
+            raise miniflux.MinifluxError("boom", exit_code=1)
+
+        with self.assertRaises(miniflux.MinifluxError):
+            miniflux.cmd_catch_up(_Args(), call)
 
 
 class _Args2:
@@ -234,6 +383,18 @@ class TestMain(unittest.TestCase):
             code = miniflux.main(["entries", "--limit", "1"])
         self.assertEqual(code, 0)
         self.assertNotIn("content", json.loads(out.getvalue())["entries"][0])
+
+    def test_mark_prints_confirmation_and_returns_0(self):
+        env = {"MINIFLUX_BASE_URL": "https://x.example", "MINIFLUX_API_TOKEN": "t"}
+        out = io.StringIO()
+        with mock.patch.dict(os.environ, env, clear=True), \
+                mock.patch("miniflux.api_request", return_value=None), \
+                mock.patch("sys.stdout", out):
+            code = miniflux.main(["mark", "read", "5", "6"])
+        self.assertEqual(code, 0)
+        self.assertEqual(
+            json.loads(out.getvalue()), {"entry_ids": [5, 6], "status": "read"}
+        )
 
     def test_missing_config_returns_2_and_writes_stderr(self):
         err = io.StringIO()
