@@ -23,7 +23,7 @@ Miniflux server. Requests time out after 30s.
 ### Install the skill
 
 ```
-# placeholder — skills.sh installer coming soon
+npx skills add merchezattor/miniflux-agent-skill
 ```
 
 ## Commands
