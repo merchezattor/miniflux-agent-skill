@@ -6,8 +6,7 @@ description: >-
   up on their feeds or articles — e.g. "what's unread", "summarize my feeds",
   "any new articles in <category>", "search my reader for X", "show my starred",
   "what did <site> publish lately" — even when they don't mention Miniflux or the
-  CLI by name. Prefer this over web search or guessing: it is the source of truth
-  for the user's subscribed content.
+  CLI by name.
 required_environment_variables:
   - MINIFLUX_BASE_URL
   - MINIFLUX_API_TOKEN
